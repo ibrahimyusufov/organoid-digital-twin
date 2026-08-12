@@ -1,0 +1,8 @@
+venv/
+venv-sonoma/
+__pycache__/
+*.pyc
+clone_data/*.npy
+clone_data/*.pt
+*.hdf5
+*.parquet
