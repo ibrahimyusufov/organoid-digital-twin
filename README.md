@@ -83,23 +83,28 @@ evaluation here instead always compares generated rollouts against the real
 activity from the *same* time window they were seeded from (`eval_matched.py`,
 `eval_latent.py`), averaged over 8 independent draws spanning the recording.
 
-Current best model (`LatentBurstLSTM`):
+Current best model (`LatentBurstLSTM`), one run of 8 draws:
 
-| Metric | Result |
-|---|---|
-| Mean rate | within ~10% of real |
-| Silent-bin fraction | within ~10% of real |
-| Median ISI | within ~10% of real |
-| Fano factor | **54%** of real (up from 38% before the shared latent drive) |
-| Mean cross-channel correlation | **37%** of real (up from 26%) |
+| Metric | Real | Generated | Ratio |
+|---|---|---|---|
+| Mean rate | 11.64 | 11.27 | 0.97 |
+| Silent-bin fraction | 0.604 | 0.608 | 1.01 |
+| Median ISI (bins) | 9.75 | 8.88 | 0.91 |
+| Fano factor | 51.89 | 33.41 | 0.64 |
+| Mean cross-channel correlation | 0.027 | 0.010 | 0.37 |
 
 Rate, silence, and ISI — first-order, per-channel statistics — are matched
 well. Fano factor and cross-channel correlation — both second-order
 statistics that depend on coordination *across* time and *across* channels —
-are still well below real, even after the shared latent drive closed much
-of the earlier gap (fano 38%→54% of real, correlation 26%→37%). The model
-is a substantially better fit to single-channel statistics than to
-population-level coordination.
+are still below real, even after the shared latent drive substantially
+closed the gap versus the pre-latent-drive baseline (project history:
+correlation roughly 26%→37% of real, fano factor also improved). Both
+ratios vary somewhat run to run, since they depend on which hours of the
+48h recording the 8 draws happen to land on — burstiness and correlation
+in the real data are not constant across the recording (see
+[Known limitations](#known-limitations)). The model is a substantially
+better fit to single-channel statistics than to population-level
+coordination in every run observed so far.
 
 ## Stimulation discrimination
 
