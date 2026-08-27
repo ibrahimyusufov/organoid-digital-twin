@@ -6,3 +6,6 @@ clone_data/*.npy
 clone_data/*.pt
 *.hdf5
 *.parquet
+README.md
+demo.ipynb
+demo_utils.py
