@@ -9,7 +9,7 @@ LIVE = np.load("clone_data/live_channels.npy")
 
 PATTERNS = {"B": (10, 11, 13, 15), "C": (1, 9, 12, 14)}
 SEED_W, POST, AMP = 200, 10, 10.0
-TAU, LR_PLAST = 0.7, 0.05
+TAU, LR_PLAST = 0.0, 0.05
 
 
 class PlasticReadout:
