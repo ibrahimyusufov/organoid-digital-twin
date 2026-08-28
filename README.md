@@ -131,6 +131,43 @@ vectors, against **0.458** for the real organoid (`test_cond_response.py`).
 The model gets *where* each pattern's effect concentrates right, but
 under-states *how distinct* the two evoked states are from each other.
 
+## Stimulation amplitude and separability (real data only)
+
+Separate question from the model above: does higher real stimulation
+amplitude produce more distinguishable per-channel response fingerprints?
+(`amplitude_separability.py` — no model involved, pure real recordings.)
+
+For each amplitude, real patterns with ≥100 trials at that amplitude
+(uniform across all of the pattern's own electrodes) were compared via mean
+pairwise cosine similarity of their 0.5s post-onset response vectors (lower
+= more distinguishable):
+
+| Amplitude | Mean pairwise cosine | Patterns compared |
+|---|---|---|
+| 1 | 0.554 | 2 |
+| 3 | 0.758 | 35 |
+| 4 | 0.825 | 10 |
+| 5 | 0.730 | 46 |
+
+Separability is **roughly flat from amplitude 3 to 5** (0.73–0.83) — no
+clear amplitude-dependent trend across the range where enough patterns
+exist to compare. Amplitudes 0.01 and 2 had too few qualifying patterns (1
+and 0) for a pairwise result. **Amplitude 10 showed zero measurable
+response**: all 4 qualifying patterns had exactly zero live-channel spikes
+in the 0.5s window after onset, across 100+ trials each, despite overall
+recording activity being above average during that period. That's not
+evidence of perfect separability — a naive cosine calculation would
+misleadingly read 0.000 "similarity" as "most distinguishable" — it's most
+likely stimulation-artifact blanking at the highest current overwhelming
+spike detection past the measurement window, and it's excluded from the
+result rather than reported at face value.
+
+A caveat that shaped the whole analysis: **34% of real stimulation events
+(55,297 of 161,638) deliver more than one amplitude simultaneously** across
+their own electrodes — "amplitude" isn't a single well-defined number for a
+third of all real stim events. Only uniform-amplitude events were used;
+mixed-amplitude events were excluded rather than assigned to any bucket.
+
 ## Plasticity: reward-gated readout learns B/C discrimination
 
 A linear readout (`plasticity.py`) is trained on top of `CondCloneLSTM`'s
@@ -162,6 +199,45 @@ a real drift, not sampling noise, since it occurred consistently across
 runs. Setting `TAU=0` (trace reflects only the current trial) removed the
 persistence and the drift with it; see `NOTES.md` for the fix and
 before/after numbers.
+
+## Maze task: no reliable learning effect (negative result)
+
+An attempt to extend the reward-gated readout to a small navigation task
+(`maze.py`) did not produce a reliable result, and is reported here for
+that reason rather than left out.
+
+**Stage 1** checked whether `CondCloneLSTM` could produce enough
+distinguishable stimulation patterns to signal cell identity in a 4×4
+(16-cell) grid. After trying three pattern-selection strategies and an
+amplitude-boosting sweep (full progression in `maze.py`'s module
+docstring), the best achievable result was a validated set of only ~4
+mutually-distinguishable patterns (max pairwise cosine 0.366 on independent
+re-measurement) — nowhere near the 16 a 4×4 grid needs. The maze was scaled
+down to 2×2 (4 cells) to match what the model can actually support.
+
+**Stage 2** ran a `PlasticReadout`-style reward-gated readout (eligibility
+trace decaying within an episode, resetting between episodes) on the 2×2
+maze, comparing real terminal reward (+1 on reaching the goal) against a
+shuffled control (reward decoupled from actual success), over 500 episodes
+× 4 seeds:
+
+| Seed | Real mean steps-to-goal | Shuffled mean steps-to-goal | Gap (shuffled − real) |
+|---|---|---|---|
+| 0 | 13.49 | 15.42 | +1.93 |
+| 1 | 15.96 | 14.41 | −1.55 |
+| 2 | 3.36 | 3.66 | +0.30 |
+| 3 | 31.34 | 12.69 | −18.65 |
+
+**Mean gap: −4.49, standard deviation: 9.54.** The gap's sign flips across
+seeds and its standard deviation is more than double its magnitude — there
+is no reliable evidence that real reward outperforms the shuffled control
+here, and one seed (3) shows real reward performing substantially *worse*
+(69.6% reached vs. shuffled's 98%). Unlike `PlasticReadout`'s B/C
+classification task, this maze's `MazeReadout` has no ground-truth action
+to contrast against — only a sparse terminal reward — and reinforces every
+action taken during a successful episode equally, which can reinforce an
+incidentally-successful-but-poor policy just as readily as a good one. This
+negative result is reported as-is.
 
 ## Known limitations
 
@@ -222,8 +298,10 @@ train.py / train_burst.py / train_latent.py / train_cond.py
 evaluate.py / eval_matched.py / eval_latent.py
                         → real-vs-generated comparison (matched-slice)
 pattern_response.py     → real stimulation-response fingerprints
+amplitude_separability.py → real stimulation-response separability vs. amplitude
 test_cond_response.py   → CondCloneLSTM's simulated stimulation response
 plasticity.py           → reward-gated B/C discrimination readout
+maze.py                 → maze feasibility check + negative learning result
 ```
 
 ---
