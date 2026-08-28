@@ -21,6 +21,7 @@ here since there's no model).
 """
 from pathlib import Path
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from load_data import load_events, load_stimulations
 from pattern_response import psth, LIVE
@@ -63,6 +64,7 @@ def main():
     st = load_stimulations()
     ev_ns = ev["time_of_event"].values.astype("datetime64[ns]").astype("int64")
     ev_ch = ev["electrode"].values
+    t0, t1 = ev["time_of_event"].min(), ev["time_of_event"].max()
 
     groups = uniform_amplitude_patterns(st)
 
@@ -90,14 +92,26 @@ def main():
         n_zero = int((vecs.sum(axis=1) == 0).sum())
         if n_zero:
             # A pattern with literally zero spikes on every live channel across
-            # 100+ trials isn't "distinguishable" -- it's absent signal (likely
-            # stimulation-artifact blanking at this amplitude). Cosine similarity
-            # against an all-zero vector is a degenerate 0/eps -> 0, which would
-            # misleadingly read as "highly separable" if plotted at face value.
+            # 100+ trials isn't "distinguishable" -- it's absent signal. Cosine
+            # similarity against an all-zero vector is a degenerate 0/eps -> 0,
+            # which would misleadingly read as "highly separable" if plotted at
+            # face value. Check whether this is a real in-recording silence or
+            # just trials that predate/postdate the events-covered window
+            # entirely (see blanking_check.py, which found exactly this for
+            # amplitude 10: 100% of trials fell ~12-13.5h before recording
+            # start, so there was never any data to have shown a response).
+            all_times = pd.Series(sub.index[sub["pattern"].isin(qualifying.index)])
+            outside = int(((all_times < t0) | (all_times > t1)).sum())
+            if outside == len(all_times):
+                cause = "100% of trials fall outside the events-covered window -- no data ever existed for these, not silence"
+            elif outside:
+                cause = f"{outside}/{len(all_times)} trials fall outside the events-covered window -- see blanking_check.py before trusting this as a response finding"
+            else:
+                cause = "all trials are within the events-covered window -- a genuine in-recording zero, worth a blanking_check.py-style raw-trace look"
             print(f"  WARNING: {n_zero}/{len(qualifying)} patterns have all-zero response "
                   f"vectors (no live-channel spikes in 0.5s post-onset, across 100+ trials "
-                  f"each) -- excluding this amplitude from the plot, not a real separability result")
-            results.append((amp, None, len(qualifying), "no live-channel response"))
+                  f"each) -- {cause} -- excluding this amplitude from the plot")
+            results.append((amp, None, len(qualifying), cause))
             continue
 
         mean_cos = mean_pairwise_cosine(vecs)

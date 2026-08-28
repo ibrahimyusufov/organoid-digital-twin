@@ -154,13 +154,23 @@ clear amplitude-dependent trend across the range where enough patterns
 exist to compare. Amplitudes 0.01 and 2 had too few qualifying patterns (1
 and 0) for a pairwise result. **Amplitude 10 showed zero measurable
 response**: all 4 qualifying patterns had exactly zero live-channel spikes
-in the 0.5s window after onset, across 100+ trials each, despite overall
-recording activity being above average during that period. That's not
+in the 0.5s window after onset, across 100+ trials each. That's not
 evidence of perfect separability — a naive cosine calculation would
-misleadingly read 0.000 "similarity" as "most distinguishable" — it's most
-likely stimulation-artifact blanking at the highest current overwhelming
-spike detection past the measurement window, and it's excluded from the
-result rather than reported at face value.
+misleadingly read 0.000 "similarity" as "most distinguishable" — so it's
+excluded from the result rather than reported at face value.
+
+An initial hypothesis was stimulation-artifact blanking at the highest
+current. `blanking_check.py` checked this against the raw 30kHz voltage
+(looked up via `fs437_segment_index.parquet`, never loading the full raw
+table) and found something more basic: **all 1,145 trials across all 4
+amplitude-10 patterns occurred 12–13.5 hours before the recording that
+produced the events table even started** — there is no raw voltage data of
+any kind covering these stim onsets either, confirmed via the segment
+index's own coverage bounds. This isn't stimulation-artifact blanking and
+it isn't genuine biological silence — neither claim is assessable, because
+there's no data at all for this window. `amplitude_separability.py` now
+checks for and flags this condition explicitly rather than attributing a
+cause to it.
 
 A caveat that shaped the whole analysis: **34% of real stimulation events
 (55,297 of 161,638) deliver more than one amplitude simultaneously** across
@@ -299,6 +309,7 @@ evaluate.py / eval_matched.py / eval_latent.py
                         → real-vs-generated comparison (matched-slice)
 pattern_response.py     → real stimulation-response fingerprints
 amplitude_separability.py → real stimulation-response separability vs. amplitude
+blanking_check.py       → raw-trace check on amplitude_separability.py's zero-response case
 test_cond_response.py   → CondCloneLSTM's simulated stimulation response
 plasticity.py           → reward-gated B/C discrimination readout
 maze.py                 → maze feasibility check + negative learning result
